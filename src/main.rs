@@ -25,7 +25,7 @@ use nobubbles::style::Color;
 use ui::{fade, rust_ramp, summary_block, warning_panel};
 
 const BAR_WIDTH: u16 = 28;
-const NAME_WIDTH: usize = 32;
+const MIN_NAME_WIDTH: usize = 32;
 const BUILDING_ROWS: usize = 6;
 const DONE_ROWS: usize = 6;
 const FAILED_ROWS: usize = 6;
@@ -612,6 +612,59 @@ fn main() -> Result<()> {
         // Fixed row counts so nothing below reflows as jobs start/finish; blank rows pad instead.
         // Older rows fade toward the background so the freshest entry stands out.
         let building_count = s.progress.building.len().min(BUILDING_ROWS);
+        let mk_label = |name: &str, running_script: bool| {
+            if s.progress.testing {
+                String::from(name)
+            } else if running_script {
+                let version = s
+                    .project
+                    .versions
+                    .get(name)
+                    .map(String::as_str)
+                    .unwrap_or("");
+                format!("build({name}) {version}")
+            } else {
+                let version = s
+                    .project
+                    .versions
+                    .get(name)
+                    .map(String::as_str)
+                    .unwrap_or("");
+                format!("{name} {version}")
+            }
+        };
+        // mk_label().len(), but without the string allocation
+        let label_len = |name: &str, running_script: bool| {
+            if s.progress.testing {
+                name.len()
+            } else if running_script {
+                let version = s
+                    .project
+                    .versions
+                    .get(name)
+                    .map(String::as_str)
+                    .unwrap_or("");
+                "build(".len() + name.len() + ") ".len() + version.len()
+            } else {
+                let version = s
+                    .project
+                    .versions
+                    .get(name)
+                    .map(String::as_str)
+                    .unwrap_or("");
+                name.len() + " ".len() + version.len()
+            }
+        };
+        let name_width = s
+            .progress
+            .building
+            .iter()
+            .take(BUILDING_ROWS)
+            .map(|(name, _, running_script)| label_len(name, *running_script))
+            .max()
+            .unwrap_or(0)
+            .max(MIN_NAME_WIDTH - 1)
+            + 1;
         for i in 0..BUILDING_ROWS {
             match s.progress.building.get(i) {
                 Some((name, start, running_script)) => {
@@ -621,29 +674,11 @@ fn main() -> Result<()> {
                     } else {
                         rimel::palette::TEXT
                     };
-                    let label = if s.progress.testing {
-                        name.clone()
-                    } else if *running_script {
-                        let version = s
-                            .project
-                            .versions
-                            .get(name)
-                            .map(String::as_str)
-                            .unwrap_or("");
-                        format!("build({name}) {version}")
-                    } else {
-                        let version = s
-                            .project
-                            .versions
-                            .get(name)
-                            .map(String::as_str)
-                            .unwrap_or("");
-                        format!("{name} {version}")
-                    };
+                    let label = mk_label(name, *running_script);
                     lines.push(fade(
                         rimel::row([
                             rimel::text("● ").fg(rimel::palette::YELLOW),
-                            rimel::text(format!("{label:<NAME_WIDTH$}")).fg(name_fg),
+                            rimel::text(format!("{label:<name_width$}")).fg(name_fg),
                             rimel::text(format!("{:05.2}s", start.elapsed().as_secs_f32()))
                                 .fg(rimel::palette::SUBTEXT0),
                         ]),
@@ -670,6 +705,13 @@ fn main() -> Result<()> {
         for _ in 0..DONE_ROWS - recent.len() {
             lines.push(rimel::text(""));
         }
+        let name_width = recent
+            .iter()
+            .map(|(name, _)| name.len())
+            .max()
+            .unwrap_or(0)
+            .max(MIN_NAME_WIDTH - 1)
+            + 1;
         for (i, (name, secs)) in recent.into_iter().rev().enumerate() {
             let alpha = (i + 1) as f32 / recent_count.max(1) as f32;
             let label = if s.progress.testing {
@@ -686,7 +728,7 @@ fn main() -> Result<()> {
             lines.push(fade(
                 rimel::row([
                     rimel::text("✓ ").fg(rimel::palette::GREEN),
-                    rimel::text(format!("{label:<NAME_WIDTH$}")).fg(rimel::palette::TEXT),
+                    rimel::text(format!("{label:<name_width$}")).fg(rimel::palette::TEXT),
                     rimel::text(format!("{secs:05.2}s")).fg(rimel::palette::SUBTEXT0),
                 ]),
                 alpha,
@@ -755,6 +797,13 @@ fn main() -> Result<()> {
                 .iter()
                 .enumerate()
                 .map(|(j, f)| (window_start + j, f));
+            let name_width = window
+                .clone()
+                .map(|(_, f)| f.name.len())
+                .max()
+                .unwrap_or(0)
+                .max(MIN_NAME_WIDTH - 1)
+                + 1;
             for (i, f) in window {
                 let expanded = s.failed.expanded.get(i).copied().unwrap_or(false);
                 let retrying = s.failed.retrying.as_deref() == Some(f.name.as_str());
@@ -764,7 +813,7 @@ fn main() -> Result<()> {
                     rimel::text(if expanded { "▾ " } else { "▸ " }).fg(rimel::palette::RED)
                 };
                 let name =
-                    rimel::text(format!("{:<NAME_WIDTH$} ", f.name)).fg(rimel::palette::TEXT);
+                    rimel::text(format!("{:<name_width$} ", f.name)).fg(rimel::palette::TEXT);
                 let name = if settled && i == s.failed.selected {
                     name.bold().fg(Color::LightRed)
                 } else {
