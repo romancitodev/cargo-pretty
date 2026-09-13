@@ -135,6 +135,8 @@ pub fn build(
     cargo_args: &[&str],
     extra_args: &[String],
 ) -> (bool, Vec<PathBuf>, String) {
+    let want_test = cargo_args.first() == Some(&"test");
+
     let mut child = Command::new("cargo")
         .args(cargo_args)
         .args(["--message-format=json", "--color=always"])
@@ -176,7 +178,9 @@ pub fn build(
         match message {
             Message::CompilerArtifact(artifact) => {
                 let fresh = artifact.fresh;
-                if let Some(path) = artifact.executable {
+                if artifact.profile.test == want_test
+                    && let Some(path) = artifact.executable
+                {
                     executables.push(path.into_std_path_buf());
                 }
                 if let Some(tx) = tx {

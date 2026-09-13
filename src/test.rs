@@ -1,7 +1,8 @@
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader};
+use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::thread;
 
 use nobubbles::effects::Emitter;
 use serde_json::Value;
@@ -41,8 +42,14 @@ fn run_one(tx: &Emitter<Event>, path: &Path, harness_args: &[String]) -> bool {
         .args(harness_args)
         .env("RUSTC_BOOTSTRAP", "1")
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .expect("failed to spawn test binary");
+
+    // Anything that the test binary writes to stderr would mangle the terminal
+    // capture it so it doesn't
+    let stderr = child.stderr.take().unwrap();
+    let stderr_thread = thread::spawn(move || io::read_to_string(stderr));
 
     let reader = BufReader::new(child.stdout.take().unwrap());
     let mut ok = true;
@@ -80,7 +87,20 @@ fn run_one(tx: &Emitter<Event>, path: &Path, harness_args: &[String]) -> bool {
         }
     }
 
-    let _ = child.wait();
+    let status = child.wait();
+    let stderr_text = stderr_thread
+        .join()
+        .ok()
+        .and_then(Result::ok)
+        .unwrap_or_default();
+
+    if ok && !status.is_ok_and(|s| s.success()) {
+        ok = false;
+        tx.send(Event::Error(format!(
+            "{} exited without reporting a failing test\n{stderr_text}",
+            path.display()
+        )));
+    }
     ok
 }
 
@@ -125,6 +145,7 @@ fn retry_one(path: &Path, name: &str) -> Option<(f32, Outcome)> {
         ])
         .env("RUSTC_BOOTSTRAP", "1")
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .expect("failed to spawn test binary");
 
