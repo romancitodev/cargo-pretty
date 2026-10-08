@@ -1,5 +1,5 @@
 [package]
-name = "cargo-pretty-build"
+name = "cargo-pretty"
 description = "A cargo wrapper with a live, animated status view for build, run and test"
 repository = "https://github.com/romancitodev/cargo-pretty"
 authors = ["romancitodev"]
@@ -7,8 +7,6 @@ license = "MIT"
 version = "0.3.0"
 edition = "2024"
 
-# The crates.io package keeps its original name (already published under it); the binary
-# it produces is `cargo-pretty`, since that's the subcommand name cargo derives from it.
 [[bin]]
 name = "cargo-pretty"
 path = "src/main.rs"

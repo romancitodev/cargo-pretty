@@ -16,6 +16,8 @@ guess.
 > old one installed? `cargo uninstall cargo-pretty-build`, install this, and swap
 > `cargo pretty-build` for `cargo pretty build`. Bare `cargo pretty` still means build,
 > so most of your muscle memory survives.
+>
+> 🎉 **The crate on crates.io is now called `cargo-pretty`** — the name was handed over to us!
 
 <p align="center">
   <video src="assets/cargo-pretty-itself.mp4" controls width="600"></video>
@@ -24,13 +26,10 @@ guess.
 ## Install
 
 ```bash
-cargo install cargo-pretty-build      # from crates.io
-cargo binstall cargo-pretty-build     # prebuilt, from GitHub releases
+cargo install cargo-pretty      # from crates.io
+cargo binstall cargo-pretty     # prebuilt, from GitHub releases
 cargo install --git https://github.com/romancitodev/cargo-pretty  # straight from source
 ```
-
-The crate is still called `cargo-pretty-build` (it was already published under that
-name), only the binary it installs is `cargo-pretty`.
 
 ## Usage
 
