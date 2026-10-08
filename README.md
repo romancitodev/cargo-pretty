@@ -12,12 +12,22 @@ Cargo's own build output does the job. This does it prettier: a live status view
 long each one took, and a progress bar driven by cargo's real unit graph instead of a
 guess.
 
-> 💔 **Renamed from `cargo-pretty-build`.** One binary now, not one per verb. Had the
-> old one installed? `cargo uninstall cargo-pretty-build`, install this, and swap
-> `cargo pretty-build` for `cargo pretty build`. Bare `cargo pretty` still means build,
-> so most of your muscle memory survives.
->
-> 🎉 **The crate on crates.io is now called `cargo-pretty`** — the name was handed over to us!
+## 🚨 The crate has been renamed to `cargo-pretty`
+
+### `cargo-pretty-build` is now `cargo-pretty` on crates.io
+
+The name was handed over to us, so the package finally matches the binary. It is one
+binary now, not one per verb.
+
+Had the old one installed? Switch like this:
+
+```bash
+cargo uninstall cargo-pretty-build
+cargo install cargo-pretty
+```
+
+Then swap `cargo pretty-build` for `cargo pretty build`. Bare `cargo pretty` still means
+build, so most of your muscle memory survives.
 
 <p align="center">
   <video src="assets/cargo-pretty-itself.mp4" controls width="600"></video>
