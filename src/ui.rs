@@ -1,4 +1,4 @@
-use nobubbles::rimel::{self, Border, Ramp, palette};
+use nobubbles::rimel::{self, Border, Ramp, colorgrad, palette};
 
 use crate::build::Warning;
 use crate::metrics::human_size;
