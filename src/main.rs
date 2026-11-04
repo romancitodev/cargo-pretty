@@ -317,10 +317,11 @@ fn main() -> Result<()> {
                 let all_ok = ok && test::run(&tx, &executables, &harness_args);
                 tx.send(Event::Done(all_ok));
             }
-            Verb::Build => tx.send(Event::Done(ok)),
+            Verb::Build | Verb::Check => tx.send(Event::Done(ok)),
         }
     });
 
+    let wording = verb.wording();
     let started = Instant::now();
     let settle_t = signal(0.0f32);
     let dismissing = signal(false);
@@ -468,6 +469,7 @@ fn main() -> Result<()> {
 
         if dismissing.get() {
             cx.render(summary_block(
+                wording,
                 &s.project.name,
                 s.build_ok.unwrap_or(false),
                 elapsed,
@@ -513,6 +515,7 @@ fn main() -> Result<()> {
                         }
                     }
                     cx.render(warning_panel(
+                        wording,
                         &s.warnings.items,
                         s.warnings.selected,
                         s.warnings.inspecting,
@@ -521,6 +524,7 @@ fn main() -> Result<()> {
                 }
 
                 cx.render(summary_block(
+                    wording,
                     &s.project.name,
                     s.build_ok.unwrap_or(false),
                     elapsed,
@@ -600,7 +604,7 @@ fn main() -> Result<()> {
         let (live_label, done_label, bar_label) = if s.progress.testing {
             ("Running", "Tests", "Progress")
         } else {
-            ("Compiling", "Compiled", "Build")
+            (wording.live, wording.done, wording.bar)
         };
 
         let mut lines = vec![

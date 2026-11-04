@@ -1,6 +1,7 @@
 use nobubbles::rimel::{self, Border, Ramp, colorgrad, palette};
 
 use crate::build::Warning;
+use crate::commands::Wording;
 use crate::metrics::human_size;
 
 pub fn rust_ramp() -> Ramp {
@@ -26,7 +27,12 @@ pub fn fade(block: rimel::Block, alpha: f32) -> rimel::Block {
     })
 }
 
-pub fn warning_panel(warnings: &[Warning], selected: usize, inspecting: bool) -> rimel::Block {
+pub fn warning_panel(
+    wording: Wording,
+    warnings: &[Warning],
+    selected: usize,
+    inspecting: bool,
+) -> rimel::Block {
     let w = &warnings[selected];
 
     let body = if inspecting {
@@ -48,7 +54,7 @@ pub fn warning_panel(warnings: &[Warning], selected: usize, inspecting: bool) ->
         .border_color(palette::YELLOW);
 
     rimel::col([
-        rimel::text("⚠  Build completed with warnings")
+        rimel::text(format!("⚠  {} completed with warnings", wording.bar))
             .fg(palette::YELLOW)
             .bold(),
         rimel::text(""),
@@ -67,6 +73,7 @@ pub fn warning_panel(warnings: &[Warning], selected: usize, inspecting: bool) ->
 }
 
 pub fn summary_block(
+    wording: Wording,
     project: &str,
     ok: bool,
     secs: f32,
@@ -75,12 +82,13 @@ pub fn summary_block(
     grew_by: u64,
 ) -> rimel::Block {
     let head = if ok && warnings == 0 {
-        rimel::text(format!("✓ {project} built in {secs:.2}s"))
+        rimel::text(format!("✓ {project} {} in {secs:.2}s", wording.past))
             .fg(palette::GREEN)
             .bold()
     } else if ok {
         rimel::text(format!(
-            "⚠ {project} built in {secs:.2}s ({warnings} warning{})",
+            "⚠ {project} {} in {secs:.2}s ({warnings} warning{})",
+            wording.past,
             if warnings == 1 { "" } else { "s" }
         ))
         .fg(palette::YELLOW)
@@ -94,7 +102,7 @@ pub fn summary_block(
     rimel::col([
         head,
         rimel::row([
-            rimel::text("  libs compiled  ").dim(),
+            rimel::text(format!("  {:<15}", wording.units)).dim(),
             rimel::text(format!("{libs}")),
         ]),
         rimel::row([
