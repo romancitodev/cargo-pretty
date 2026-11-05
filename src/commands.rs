@@ -24,6 +24,12 @@ impl Verb {
     /// verb is an error rather than a silent fallback to build, since that would run the wrong
     /// thing.
     pub fn parse(mut args: Vec<String>) -> Result<(Self, Vec<String>), String> {
+        // A leading `--` (e.g. `cargo run -- check` while developing, or invoking the binary
+        // directly) only separates us from the caller; without dropping it the verb would be
+        // read as a trailing arg to `cargo build`.
+        if args.first().map(String::as_str) == Some("--") {
+            args.remove(0);
+        }
         let Some(verb) = args.first().filter(|a| !a.starts_with('-')) else {
             return Ok((Verb::Build, args));
         };
@@ -153,6 +159,13 @@ mod tests {
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(ToString::to_string).collect()
+    }
+
+    #[test]
+    fn skips_a_leading_separator_before_the_verb() {
+        let (verb, rest) = Verb::parse(args(&["--", "check"])).unwrap();
+        assert_eq!(verb.compile_args(), ["check"]);
+        assert!(rest.is_empty());
     }
 
     #[test]
