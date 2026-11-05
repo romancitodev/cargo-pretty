@@ -244,7 +244,9 @@ pub fn build(
         }
     }
 
-    let _ = child.wait();
+    // cargo can die before emitting `BuildFinished` (bad CLI args, unreadable manifest), so
+    // the exit status is the authority; otherwise those runs would be reported as successes.
+    ok &= child.wait().is_ok_and(|status| status.success());
     let stderr_text = stderr_thread.join().unwrap_or_default();
     if !ok && !stderr_text.trim().is_empty() {
         if let Some(tx) = tx {
