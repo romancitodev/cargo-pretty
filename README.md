@@ -8,7 +8,7 @@
 </p>
 
 Cargo's own build output does the job. This does it prettier: a live status view for
-`build`, `run` and `test`, showing which crates (or tests) are running right now, how
+`build`, `check`, `run` and `test`, showing which crates (or tests) are running right now, how
 long each one took, and a progress bar driven by cargo's real unit graph instead of a
 guess.
 
@@ -46,6 +46,7 @@ cargo install --git https://github.com/romancitodev/cargo-pretty  # straight fro
 ```bash
 cargo pretty                              # cargo build
 cargo pretty build --release
+cargo pretty check --all-targets
 cargo pretty run --bin server -- --port 8080
 cargo pretty test
 ```

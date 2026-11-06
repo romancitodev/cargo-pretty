@@ -89,7 +89,7 @@ pub enum Event {
 }
 
 // cargo's own colored status lines have no escape-code parser in cargo_metadata's Message
-// stream, so strip them by hand to pattern-match "Compiling <name>".
+// stream, so strip them by hand to pattern-match "Compiling <name>" / "Checking <name>".
 fn strip_ansi(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut in_escape = false;
@@ -101,6 +101,17 @@ fn strip_ansi(s: &str) -> String {
         }
     }
     out
+}
+
+/// Crate name out of a cargo status line announcing a unit has started. `cargo check` reports
+/// most units as "Checking", but build scripts and proc-macros still need real codegen there,
+/// so those keep saying "Compiling" within the same run.
+fn started_unit(line: &str) -> Option<&str> {
+    let line = line.trim_start();
+    line.strip_prefix("Compiling ")
+        .or_else(|| line.strip_prefix("Checking "))?
+        .split_whitespace()
+        .next()
 }
 
 fn to_warning(d: &Diagnostic) -> Warning {
@@ -157,8 +168,7 @@ pub fn build(
             .map_while(std::io::Result::ok)
         {
             let clean = strip_ansi(&line);
-            if let Some(rest) = clean.trim_start().strip_prefix("Compiling ")
-                && let Some(name) = rest.split_whitespace().next()
+            if let Some(name) = started_unit(&clean)
                 && let Some(stderr_tx) = &stderr_tx
             {
                 stderr_tx.send(Event::Started(name.to_string()));
@@ -234,7 +244,9 @@ pub fn build(
         }
     }
 
-    let _ = child.wait();
+    // cargo can die before emitting `BuildFinished` (bad CLI args, unreadable manifest), so
+    // the exit status is the authority; otherwise those runs would be reported as successes.
+    ok &= child.wait().is_ok_and(|status| status.success());
     let stderr_text = stderr_thread.join().unwrap_or_default();
     if !ok && !stderr_text.trim().is_empty() {
         if let Some(tx) = tx {
@@ -243,4 +255,25 @@ pub fn build(
         errors.push_str(&stderr_text);
     }
     (ok, executables, errors)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{started_unit, strip_ansi};
+
+    #[test]
+    fn picks_the_crate_out_of_compiling_and_checking_lines() {
+        assert_eq!(started_unit("   Compiling serde v1.0.0"), Some("serde"));
+        assert_eq!(
+            started_unit("    Checking cargo-pretty v0.3.1 (/x)"),
+            Some("cargo-pretty")
+        );
+        assert_eq!(started_unit("    Finished `dev` profile"), None);
+    }
+
+    #[test]
+    fn reads_colored_status_lines_once_stripped() {
+        let line = strip_ansi("\u{1b}[1m\u{1b}[32m    Checking\u{1b}[0m libc v0.2.0");
+        assert_eq!(started_unit(&line), Some("libc"));
+    }
 }
